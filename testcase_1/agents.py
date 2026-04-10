@@ -1,9 +1,11 @@
-from llm import model
+import time
+import re
+from llm import extraction_model
 from schemas import EventList
 from langchain_core.prompts import ChatPromptTemplate
 
-def extract_events(text_chunk: str) -> EventList:
-    """Extract events from a given text chunk using the simplified Event schema."""
+def extract_events(text_chunk: str, max_retries: int = 5) -> EventList:
+    """Extract events from a given text chunk using the simplified Event schema with retry logic for rate limits."""
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", (
@@ -19,12 +21,29 @@ def extract_events(text_chunk: str) -> EventList:
         ("human", "{input}")
     ])
     
-    structured_llm = model.with_structured_output(EventList)
+    structured_llm = extraction_model.with_structured_output(EventList)
     chain = prompt | structured_llm
     
-    try:
-        response = chain.invoke({"input": text_chunk})
-        return response
-    except Exception as e:
-        print(f"Error during event extraction: {e}")
-        return EventList(events=[])
+    for attempt in range(max_retries):
+        try:
+            response = chain.invoke({"input": text_chunk})
+            return response
+        except Exception as e:
+            error_msg = str(e)
+            
+            # Check for Rate Limit errors (HTTP 429 or 'rate_limit_exceeded')
+            if "429" in error_msg or "rate_limit" in error_msg.lower():
+                # Attempt to extract suggested wait time from the error message (e.g., "try again in 4.48s")
+                wait_time = 10  # Default fallback wait time
+                match = re.search(r"try again in ([\d\.]+)s", error_msg)
+                if match:
+                    wait_time = float(match.group(1)) + 1.0  # Add a little buffer
+                
+                print(f"⚠️  Rate limit hit (Attempt {attempt+1}/{max_retries}). Retrying in {wait_time:.2f}s...")
+                time.sleep(wait_time)
+                continue
+            else:
+                print(f"❌ Error during event extraction: {e}")
+                break # Non-retryable error
+                
+    return EventList(events=[])
