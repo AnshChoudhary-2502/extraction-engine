@@ -12,16 +12,16 @@ def chunk_text(text: str):
     )
     return splitter.split_text(text)
 
-# def inspect_chunks(chunks, num_chunks=50):
-#     print(f"\nTotal chunks: {len(chunks)}\n")
+def inspect_chunks(chunks, num_chunks=1000):
+    print(f"\nTotal chunks: {len(chunks)}\n")
 
-#     for i, chunk in enumerate(chunks[:num_chunks]):
-#         print(f"--- Chunk {i} (length={len(chunk)}) ---")
-#         print(chunk)
-#         print("\n")
+    for i, chunk in enumerate(chunks[:num_chunks]):
+        print(f"--- Chunk {i} (length={len(chunk)}) ---")
+        # print(chunk)
+        print("\n")
 
 if __name__ == "__main__":
-    file_path = "testcase_1/story.txt"
+    file_path = "testcase_1/stories/drstrange.txt"
     text = load_txt(file_path)
     chunks = chunk_text(text)
-    # inspect_chunks(chunks)
+    inspect_chunks(chunks)
